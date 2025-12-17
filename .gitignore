@@ -1,0 +1,7 @@
+# Go build artifacts
+bin/
+*.exe
+*.out
+
+# OS files
+.DS_Store
