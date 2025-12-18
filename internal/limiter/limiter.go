@@ -42,3 +42,6 @@ func NewFixedWindowLimiter(limit int64, windowSize time.Duration) *FixedWindowLi
 	}
 }
 
+
+func (f *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, error)
+
