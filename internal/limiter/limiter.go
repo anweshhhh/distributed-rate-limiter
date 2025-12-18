@@ -43,5 +43,34 @@ func NewFixedWindowLimiter(limit int64, windowSize time.Duration) *FixedWindowLi
 }
 
 
-func (f *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, error)
+func (f *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	now := f.now().UnixNano()
+
+	state, exists := f.states[key]
+	if !exists {
+		f.states[key] = &fixedWindowState{
+			windowStart: now,
+			count:       1,
+		}
+		return true, nil
+	}
+
+	windowEnd := state.windowStart + f.windowSize.Nanoseconds()
+	if now >= windowEnd {
+		state.windowStart = now
+		state.count = 1
+		return true, nil
+	}
+
+	if state.count < f.limit {
+		state.count++
+		return true, nil
+	}
+
+	return false, nil
+}
+
 
