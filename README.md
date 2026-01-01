@@ -41,7 +41,7 @@ Rate limiting is a core building block of API gateways and cloud infrastructure
 ---
 ## 🚀 Phase 3 — Advanced Rate Limiting Algorithms
 
-### Phase 3A — Sliding Window Counter (in progress)
+### ✅ Phase 3A — Sliding Window Counter (Redis-backed)
 
 **Goal:**  
 Reduce burstiness at fixed-window boundaries while maintaining bounded memory and high throughput.
@@ -58,6 +58,26 @@ Reduce burstiness at fixed-window boundaries while maintaining bounded memory an
 This approach is an approximation (unlike exact timestamp logs),
 but offers a strong balance between correctness, performance, and operational simplicity.
 
+
+### ✅ Phase 3B — Token Bucket (Redis-backed)
+
+**Goal:** 
+Support controlled burst traffic while enforcing a steady long-term rate.
+
+**Design highlights:**
+- Redis-backed Token Bucket with Lua-based atomic enforcement
+- Per-identity bucket with configurable:
+capacity (burst size)
+refill rate (tokens per second)
+- Fixed-point math for deterministic behavior
+- Single Redis hash per identity
+- TTL-based cleanup to ensure bounded memory usage
+- Deterministic, production-safe testing strategy
+
+**Why Token Bucket:**
+Unlike window-based approaches, token buckets allow short bursts
+without permanently penalizing clients, making them ideal for
+user-facing APIs and gateways.
 ---
 ## API
 
@@ -90,15 +110,8 @@ curl -X POST localhost:8080/check \
 Roadmap
 
 ✅ Phase 1: In-memory Fixed Window
-
 ✅ Phase 2: Redis-backed Fixed Window
-
-🚧 Phase 3A: Sliding Window Counter (Redis + Lua)
-
-⏳ Phase 3B: Token Bucket / Leaky Bucket
-
-⏳ Phase 4: Configuration storage, multi-tenant limits
-
-⏳ Phase 5: Metrics, observability, and production hardening
+✅ Phase 3A: Sliding Window Counter (Redis + Lua)
+✅ Phase 3B: Token Bucket (Redis + Lua)
 
 ---
