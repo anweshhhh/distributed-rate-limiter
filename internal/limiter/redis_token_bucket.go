@@ -73,6 +73,9 @@ func (l *RedisTokenBucketLimiter) Allow(ctx context.Context, key string) (bool, 
 
 	redisKey := l.redisKey(key)
 
+	// NEW: explicit time source for Lua (used mainly for tests)
+	nowMicros := time.Now().UnixMicro()
+
 	res, err := l.script.Run(
 		ctx,
 		l.rdb,
@@ -82,10 +85,10 @@ func (l *RedisTokenBucketLimiter) Allow(ctx context.Context, key string) (bool, 
 		l.cost,
 		l.scale,
 		l.ttl.Milliseconds(),
+		nowMicros, // <-- NEW ARG (ARGV[6])
 	).Result()
 
 	if err != nil {
-		// Fail closed on Redis/Lua errors
 		return false, err
 	}
 
@@ -101,6 +104,7 @@ func (l *RedisTokenBucketLimiter) Allow(ctx context.Context, key string) (bool, 
 
 	return allowed == 1, nil
 }
+
 
 // redisKey builds the Redis key for a given identity.
 func (l *RedisTokenBucketLimiter) redisKey(key string) string {
