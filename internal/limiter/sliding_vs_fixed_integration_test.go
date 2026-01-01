@@ -26,6 +26,10 @@ func TestSlidingWindowVsFixedWindowBoundaryBurst(t *testing.T) {
 		time.Second,
 	)
 
+	// Override clock so fixed window follows Redis time
+	now := time.Unix(0, 0)
+	fixed.now = func() time.Time { return now }
+
 	sliding, err := NewRedisSlidingWindowCounter(
 		client,
 		"test",
@@ -40,6 +44,7 @@ func TestSlidingWindowVsFixedWindowBoundaryBurst(t *testing.T) {
 
 	// Late in first window
 	r.FastForward(900 * time.Millisecond)
+	now = now.Add(900 * time.Millisecond)
 
 	fixedAllowed := 0
 	slidingAllowed := 0
@@ -58,6 +63,7 @@ func TestSlidingWindowVsFixedWindowBoundaryBurst(t *testing.T) {
 
 	// Cross window boundary
 	r.FastForward(200 * time.Millisecond)
+	now = now.Add(200 * time.Millisecond)
 
 	for i := 0; i < 4; i++ {
 		ok, _ := fixed.Allow(ctx, key)

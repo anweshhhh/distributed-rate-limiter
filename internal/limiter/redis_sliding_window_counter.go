@@ -5,17 +5,21 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"fmt"
-	"os"
 
 	"github.com/redis/go-redis/v9"
+
+	_ "embed"
 )
 
+//go:embed scripts/sliding_window_counter.lua
+var slidingWindowCounterLua string
+
 type RedisSlidingWindowCounter struct {
-	client   *redis.Client
-	limit    int
-	windowMs int
-	ttlMs    int
-	lua      *redis.Script
+	client    *redis.Client
+	limit     int
+	windowMs  int
+	ttlMs     int
+	lua       *redis.Script
 	namespace string
 }
 
@@ -26,17 +30,12 @@ func NewRedisSlidingWindowCounter(
 	windowMs int,
 ) (*RedisSlidingWindowCounter, error) {
 
-	script, err := os.ReadFile("internal/limiter/scripts/sliding_window_counter.lua")
-	if err != nil {
-		return nil, err
-	}
-
 	return &RedisSlidingWindowCounter{
 		client:    client,
 		limit:     limit,
 		windowMs:  windowMs,
 		ttlMs:     (2 * windowMs) + 1000,
-		lua:       redis.NewScript(string(script)),
+		lua:       redis.NewScript(slidingWindowCounterLua),
 		namespace: namespace,
 	}, nil
 }
@@ -45,15 +44,12 @@ func (r *RedisSlidingWindowCounter) Allow(ctx context.Context, key string) (bool
 	hash := sha1.Sum([]byte(key))
 	hashedKey := hex.EncodeToString(hash[:])
 
-	base := fmt.Sprintf("rl:%s:%s:swc", r.namespace, hashedKey)
-
-	currKey := base + ":curr"
-	prevKey := base + ":prev"
+	baseKey := fmt.Sprintf("rl:%s:%s:swc", r.namespace, hashedKey)
 
 	res, err := r.lua.Run(
 		ctx,
 		r.client,
-		[]string{currKey, prevKey},
+		[]string{baseKey},
 		r.limit,
 		r.windowMs,
 		r.ttlMs,

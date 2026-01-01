@@ -1,29 +1,37 @@
 package limiter
 
 import (
-    "context"
-    "sync"
-    "time"
+	"context"
+	"crypto/sha1"
+	"encoding/hex"
+	"sync"
+	"time"
 )
 
+
+// hashKey produces a stable, compact identifier for Redis keys.
+// SHA1 is sufficient here: non-cryptographic, fast, low collision risk.
+func hashKey(key string) string {
+	sum := sha1.Sum([]byte(key))
+	return hex.EncodeToString(sum[:])
+}
 
 type RateLimiter interface {
 	Allow(ctx context.Context, key string) (bool, error)
 }
 
 type fixedWindowState struct {
-    windowStart int64
-    count       int64
+	windowStart int64
+	count       int64
 }
 
 type FixedWindowLimiter struct {
-    mu         sync.Mutex
-    states     map[string]*fixedWindowState
-    limit      int64
-    windowSize time.Duration
-    now        func() time.Time // optional but recommended
+	mu         sync.Mutex
+	states     map[string]*fixedWindowState
+	limit      int64
+	windowSize time.Duration
+	now        func() time.Time // optional but recommended
 }
-
 
 func NewFixedWindowLimiter(limit int64, windowSize time.Duration) *FixedWindowLimiter {
 	if limit <= 0 {
@@ -41,7 +49,6 @@ func NewFixedWindowLimiter(limit int64, windowSize time.Duration) *FixedWindowLi
 		now:        time.Now,
 	}
 }
-
 
 func (f *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, error) {
 	f.mu.Lock()
@@ -72,5 +79,3 @@ func (f *FixedWindowLimiter) Allow(ctx context.Context, key string) (bool, error
 
 	return false, nil
 }
-
-
